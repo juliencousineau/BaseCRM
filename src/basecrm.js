@@ -1,4 +1,4 @@
-var rp = require('request-promise');
+var rp = require('request');
 
 //  resources
 var account = require('./resources/account');
@@ -54,11 +54,10 @@ function BaseCRM(options) {
     this.users = new Users(this);
 }
 
-BaseCRM.prototype.request = function(options) {
+BaseCRM.prototype.request = function(options, call) {
     return rp({
         method: options.method,
-        baseUrl: this.options.baseUrl,
-        uri: '/v2/' + options.resource,
+        uri: this.options.baseUrl + '/v2/' + options.resource,
         body: options.data,
         qs: options.params,
         headers: {
@@ -67,50 +66,61 @@ BaseCRM.prototype.request = function(options) {
         },
         timeout: (options.timeout || this.options.timeout) * 1000,
         json: true
-    });
+    }, call);
 };
 
-BaseCRM.prototype.find = function(resource, params) {
+BaseCRM.prototype.find = function(resource, params, call) {
     return this.request({
         method: 'GET',
         resource: resource,
         params: params
-    }).then(function(res) {
-        return res.meta.type === 'collection' ?
-            res.items.map(function(item) {
-                return item.data;
-            }) :
-            res.data;
+    }, function(error, response, body) {
+        if (body == undefined)
+            call();
+        else {
+            var data = body.meta.type === 'collection' ?
+                body.items.map(function(item) {
+                    return item.data;
+                }) :
+                body.data;
+            call(data); 
+        }
     });
 };
-BaseCRM.prototype.create = function(resource, data) {
+BaseCRM.prototype.create = function(resource, data, call) {
     return this.request({
         method: 'POST',
         resource: resource,
         data: {
             data: data
         }
-    }).then(function(res) {
-        return res.data;
+    }, function(error, response, body) {
+        if (body == undefined)
+            call();
+        else
+            call(body.data);
     });
 };
-BaseCRM.prototype.update = function(resource, data) {
+BaseCRM.prototype.update = function(resource, data, call) {
     return this.request({
         method: 'PUT',
         resource: resource,
         data: {
             data: data
         }
-    }).then(function(res) {
-        return res.data;
+    }, function(error, response, body) {
+        if (body == undefined)
+            call();
+        else
+            call(body.data);
     });
 };
-BaseCRM.prototype.delete = function(resource) {
+BaseCRM.prototype.delete = function(resource, call) {
     return this.request({
         method: 'DELETE',
         resource: resource
-    }).then(function() {
-        return true;
+    }, function(error, response, body) {
+        call(true);
     });
 };
 
